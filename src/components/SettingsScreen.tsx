@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SMSService } from '../services/SMSService';
+import { Header } from './Header';
 
 interface SettingsScreenProps {
   onClose: () => void;
@@ -149,17 +150,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>P T</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <Header mode="settings" onClose={onClose} showStatusIndicator={false} />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Server URL Section */}
-        <View style={styles.section}>
+        <View style={[styles.section, styles.firstSection]}>
           <Text style={styles.sectionTitle}>Server URL</Text>
           <Text style={styles.sectionDescription}>
             Messages will be forwarded to this endpoint.
@@ -210,16 +209,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </View>
         </View>
 
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, isLoading && styles.buttonDisabled]}
-          onPress={saveSettings}
-          disabled={isLoading}
-        >
-          <Text style={styles.saveButtonText}>
-            {isLoading ? 'Saving...' : '💾 Save Settings'}
-          </Text>
-        </TouchableOpacity>
+        {/* Save Settings Section */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.saveButton, isLoading && styles.buttonDisabled]}
+            onPress={saveSettings}
+            disabled={isLoading}
+          >
+            <Text style={styles.saveButtonText}>
+              {isLoading ? 'Saving...' : '💾 Save Settings'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Data Management Section */}
         <View style={styles.section}>
@@ -279,45 +280,26 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#2A2A2A',
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 20,
-      backgroundColor: '#2A2A2A',
-      paddingTop: 60, // Account for status bar
-    },
-    backButton: {
-      padding: 8,
-      width: 40,
-    },
-    backButtonText: {
-      fontSize: 24,
-      color: '#FFFFFF',
-      fontWeight: '300',
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#FFFFFF',
-      letterSpacing: 2,
-    },
-    placeholder: {
-      width: 40, // Same width as back button for centering
+      backgroundColor: '#1A1A1A', // Match main screen background
     },
     content: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: 0, // Remove horizontal padding since sections now have their own margins
+    },
+    scrollContent: {
+      paddingBottom: 24, // Add bottom padding for better scrolling experience
     },
     section: {
-      backgroundColor: '#1E1E1E',
-      marginBottom: 16,
-      padding: 20,
-      borderRadius: 16,
+      backgroundColor: '#2A2A2A', // Keep card background
+      marginBottom: 16, // Consistent with HomeServerCard spacing
+      padding: 16, // Match HomeServerCard padding
+      borderRadius: 12, // Match HomeServerCard border radius
+      marginHorizontal: 16, // Match HomeServerCard margin
       borderWidth: 1,
       borderColor: '#3A3A3A',
+    },
+    firstSection: {
+      marginTop: 24, // Match HomeServerCard top spacing
     },
     sectionTitle: {
       fontSize: 18,
@@ -405,7 +387,6 @@ const getStyles = (isDarkMode: boolean) =>
       padding: 16,
       borderRadius: 12,
       alignItems: 'center',
-      marginBottom: 16,
     },
     saveButtonText: {
       color: '#FFFFFF',
