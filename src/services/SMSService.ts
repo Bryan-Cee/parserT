@@ -4,6 +4,8 @@ import { SMSMessage, UploadResult } from '../types';
 const STORAGE_KEY = 'sms_messages';
 const UPLOAD_LOGS_KEY = 'upload_logs';
 const SERVER_URL_KEY = 'server_url';
+const ALLOWED_SENDERS_KEY = 'allowed_senders';
+const LAST_SYNC_KEY = 'last_sync_time';
 
 export class SMSService {
   private static instance: SMSService;
@@ -31,6 +33,76 @@ export class SMSService {
     } catch (error) {
       console.error('Error getting server URL:', error);
       return this.serverUrl;
+    }
+  }
+
+  async setAllowedSenders(senders: string[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(ALLOWED_SENDERS_KEY, JSON.stringify(senders));
+    } catch (error) {
+      console.error('Error saving allowed senders:', error);
+    }
+  }
+
+  async getAllowedSenders(): Promise<string[]> {
+    try {
+      const storedSenders = await AsyncStorage.getItem(ALLOWED_SENDERS_KEY);
+      if (storedSenders) {
+        return JSON.parse(storedSenders);
+      }
+      // Default allowed senders
+      return [
+        'M-PESA',
+        'MPESA',
+        'Safaricom',
+        'IM-BANK',
+        'EQUITY',
+        'KCB',
+        'COOP BANK',
+        'STANCHART',
+        'ABSA',
+        'DTB',
+        'I&M BANK',
+        'FAMILY BANK',
+        'SID',
+        'TALA',
+      ];
+    } catch (error) {
+      console.error('Error getting allowed senders:', error);
+      return [
+        'M-PESA',
+        'MPESA',
+        'Safaricom',
+        'IM-BANK',
+        'EQUITY',
+        'KCB',
+        'COOP BANK',
+        'STANCHART',
+        'ABSA',
+        'DTB',
+        'I&M BANK',
+        'FAMILY BANK',
+        'SID',
+        'TALA',
+      ];
+    }
+  }
+
+  async setLastSyncTime(timestamp: number): Promise<void> {
+    try {
+      await AsyncStorage.setItem(LAST_SYNC_KEY, timestamp.toString());
+    } catch (error) {
+      console.error('Error saving last sync time:', error);
+    }
+  }
+
+  async getLastSyncTime(): Promise<number> {
+    try {
+      const storedTime = await AsyncStorage.getItem(LAST_SYNC_KEY);
+      return storedTime ? parseInt(storedTime, 10) : 0;
+    } catch (error) {
+      console.error('Error getting last sync time:', error);
+      return 0;
     }
   }
 
@@ -128,16 +200,13 @@ export class SMSService {
   async retryFailedUploads(): Promise<number> {
     try {
       const messages = await this.getMessages();
-      const failedMessages = messages.filter(m => !m.uploaded);
-      let successCount = 0;
+      const failedMessages = messages.filter(msg => !msg.uploaded);
 
+      let successCount = 0;
       for (const message of failedMessages) {
         const result = await this.uploadMessage(message);
         if (result.success) {
           successCount++;
-        } else {
-          message.uploadAttempts = (message.uploadAttempts || 0) + 1;
-          await this.updateMessage(message);
         }
       }
 
@@ -145,6 +214,50 @@ export class SMSService {
     } catch (error) {
       console.error('Error retrying failed uploads:', error);
       return 0;
+    }
+  }
+
+  async syncMessages(): Promise<{
+    uploaded: number;
+    failed: number;
+    skipped: number;
+  }> {
+    try {
+      const messages = await this.getMessages();
+      const pendingMessages = messages.filter(msg => !msg.uploaded);
+
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      console.log(
+        `Starting sync of ${pendingMessages.length} pending messages`,
+      );
+
+      for (const message of pendingMessages) {
+        const result = await this.uploadMessage(message);
+        if (result.success) {
+          uploadedCount++;
+          console.log(`Successfully uploaded message: ${message.id}`);
+        } else {
+          failedCount++;
+          console.log(
+            `Failed to upload message: ${message.id}, Error: ${result.error}`,
+          );
+          message.uploadAttempts = (message.uploadAttempts || 0) + 1;
+          await this.updateMessage(message);
+        }
+      }
+
+      // Update last sync time
+      await this.setLastSyncTime(Date.now());
+
+      console.log(
+        `Sync completed: ${uploadedCount} uploaded, ${failedCount} failed`,
+      );
+      return { uploaded: uploadedCount, failed: failedCount, skipped: 0 };
+    } catch (error) {
+      console.error('Error syncing messages:', error);
+      return { uploaded: 0, failed: 0, skipped: 0 };
     }
   }
 
@@ -192,7 +305,11 @@ export class SMSService {
 
   async clearData(): Promise<void> {
     try {
-      await AsyncStorage.multiRemove([STORAGE_KEY, UPLOAD_LOGS_KEY]);
+      await AsyncStorage.multiRemove([
+        STORAGE_KEY,
+        UPLOAD_LOGS_KEY,
+        LAST_SYNC_KEY,
+      ]);
     } catch (error) {
       console.error('Error clearing data:', error);
     }

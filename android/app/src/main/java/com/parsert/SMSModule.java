@@ -88,7 +88,7 @@ public class SMSModule extends ReactContextBaseJavaModule {
     public void readRecentSMS(Promise promise) {
         try {
             ReactApplicationContext context = getReactApplicationContext();
-            
+
             // Check if we have READ_SMS permission
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
                 promise.reject("NO_PERMISSION", "READ_SMS permission not granted");
@@ -100,7 +100,7 @@ public class SMSModule extends ReactContextBaseJavaModule {
                 new String[]{"address", "body", "date"},
                 null,
                 null,
-                "date DESC LIMIT 10"
+                "date DESC LIMIT 50"
             );
 
             WritableMap result = Arguments.createMap();
@@ -119,7 +119,7 @@ public class SMSModule extends ReactContextBaseJavaModule {
                     messages.pushMap(message);
                 }
                 cursor.close();
-                
+
                 result.putArray("messages", messages);
                 result.putInt("count", messages.size());
                 promise.resolve(result);

@@ -20,6 +20,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   isDarkMode = true,
 }) => {
   const [serverUrl, setServerUrl] = useState('');
+  const [allowedSenders, setAllowedSenders] = useState<string[]>([]);
+  const [newSender, setNewSender] = useState('');
   const [uploadLogs, setUploadLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,6 +29,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   useEffect(() => {
     loadSettings();
+    loadAllowedSenders();
     loadUploadLogs();
   }, []);
 
@@ -36,6 +39,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       setServerUrl(url);
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadAllowedSenders = async () => {
+    try {
+      const senders = await smsService.getAllowedSenders();
+      setAllowedSenders(senders);
+    } catch (error) {
+      console.error('Error loading allowed senders:', error);
     }
   };
 
@@ -60,6 +72,47 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       Alert.alert('Success', 'Server URL saved successfully');
     } catch (error) {
       Alert.alert('Error', 'Failed to save server URL');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addSender = async () => {
+    if (!newSender.trim()) {
+      Alert.alert('Error', 'Please enter a sender name');
+      return;
+    }
+
+    const updatedSenders = [...allowedSenders, newSender.trim()];
+    try {
+      await smsService.setAllowedSenders(updatedSenders);
+      setAllowedSenders(updatedSenders);
+      setNewSender('');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add sender');
+    }
+  };
+
+  const removeSender = async (senderToRemove: string) => {
+    const updatedSenders = allowedSenders.filter(
+      sender => sender !== senderToRemove,
+    );
+    try {
+      await smsService.setAllowedSenders(updatedSenders);
+      setAllowedSenders(updatedSenders);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to remove sender');
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      setIsLoading(true);
+      await smsService.setServerUrl(serverUrl.trim());
+      await smsService.setAllowedSenders(allowedSenders);
+      Alert.alert('Success', 'Settings saved successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save settings');
     } finally {
       setIsLoading(false);
     }
@@ -97,39 +150,83 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>✕</Text>
+        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
+        <Text style={styles.title}>P T</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Server URL Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Server Configuration</Text>
-          <Text style={styles.label}>Server URL</Text>
+          <Text style={styles.sectionTitle}>Server URL</Text>
+          <Text style={styles.sectionDescription}>
+            Messages will be forwarded to this endpoint.
+          </Text>
           <TextInput
             style={styles.input}
             value={serverUrl}
             onChangeText={setServerUrl}
-            placeholder="http://10.0.2.2:8000"
-            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
+            placeholder="https://example.com/webhook"
+            placeholderTextColor="#666666"
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={saveServerUrl}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Saving...' : 'Save Server URL'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
+        {/* Allowed Senders Section */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Allowed Senders</Text>
+          <Text style={styles.sectionDescription}>
+            Add senders you'd like the app to process.
+          </Text>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, styles.senderInput]}
+              value={newSender}
+              onChangeText={setNewSender}
+              placeholder="Type sender ID"
+              placeholderTextColor="#666666"
+            />
+            <TouchableOpacity onPress={addSender} style={styles.addButton}>
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sendersContainer}>
+            {allowedSenders.map((sender, index) => (
+              <View key={index} style={styles.senderTag}>
+                <Text style={styles.senderText}>{sender}</Text>
+                <TouchableOpacity
+                  onPress={() => removeSender(sender)}
+                  style={styles.removeButton}
+                >
+                  <Text style={styles.removeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, isLoading && styles.buttonDisabled]}
+          onPress={saveSettings}
+          disabled={isLoading}
+        >
+          <Text style={styles.saveButtonText}>
+            {isLoading ? 'Saving...' : '💾 Save Settings'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Data Management Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Data Management</Text>
+
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upload Logs (Last 10)</Text>
+            <Text style={styles.subsectionTitle}>Upload Logs (Last 10)</Text>
             <TouchableOpacity
               onPress={loadUploadLogs}
               style={styles.refreshButton}
@@ -163,10 +260,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </View>
             ))
           )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data Management</Text>
           <TouchableOpacity
             style={[styles.button, styles.dangerButton]}
             onPress={clearData}
@@ -185,42 +279,138 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5',
+      backgroundColor: '#2A2A2A',
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 16,
-      backgroundColor: isDarkMode ? '#1A1A1A' : '#FFFFFF',
-      borderBottomWidth: 1,
-      borderBottomColor: isDarkMode ? '#3A3A3A' : '#E0E0E0',
+      padding: 20,
+      backgroundColor: '#2A2A2A',
+      paddingTop: 60, // Account for status bar
+    },
+    backButton: {
+      padding: 8,
+      width: 40,
+    },
+    backButtonText: {
+      fontSize: 24,
+      color: '#FFFFFF',
+      fontWeight: '300',
     },
     title: {
       fontSize: 20,
       fontWeight: 'bold',
-      color: isDarkMode ? '#FFFFFF' : '#333333',
+      color: '#FFFFFF',
+      letterSpacing: 2,
     },
-    closeButton: {
-      padding: 8,
-    },
-    closeButtonText: {
-      fontSize: 18,
-      color: isDarkMode ? '#FFFFFF' : '#666666',
+    placeholder: {
+      width: 40, // Same width as back button for centering
     },
     content: {
       flex: 1,
+      paddingHorizontal: 16,
     },
     section: {
-      backgroundColor: isDarkMode ? '#2A2A2A' : '#FFFFFF',
-      margin: 16,
+      backgroundColor: '#1E1E1E',
+      marginBottom: 16,
+      padding: 20,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: '#3A3A3A',
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginBottom: 8,
+    },
+    sectionDescription: {
+      fontSize: 14,
+      color: '#CCCCCC',
+      marginBottom: 16,
+      lineHeight: 20,
+    },
+    subsectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: '#444444',
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      backgroundColor: '#2A2A2A',
+      color: '#FFFFFF',
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    senderInput: {
+      flex: 1,
+      marginRight: 12,
+      marginBottom: 0,
+    },
+    addButton: {
+      backgroundColor: '#6366F1',
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    addButtonText: {
+      color: '#FFFFFF',
+      fontSize: 24,
+      fontWeight: '600',
+    },
+    sendersContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    senderTag: {
+      backgroundColor: '#3A3A3A',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    senderText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      marginRight: 8,
+    },
+    removeButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#FF5722',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    removeButtonText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    saveButton: {
+      backgroundColor: '#6366F1',
       padding: 16,
       borderRadius: 12,
-      elevation: isDarkMode ? 0 : 2,
-      shadowColor: isDarkMode ? 'transparent' : '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDarkMode ? 0 : 0.22,
-      shadowRadius: isDarkMode ? 0 : 2.22,
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    saveButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -228,35 +418,15 @@ const getStyles = (isDarkMode: boolean) =>
       alignItems: 'center',
       marginBottom: 12,
     },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: isDarkMode ? '#FFFFFF' : '#333333',
-      marginBottom: 12,
-    },
-    label: {
-      fontSize: 14,
-      color: isDarkMode ? '#CCCCCC' : '#666666',
-      marginBottom: 8,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: isDarkMode ? '#444444' : '#E0E0E0',
-      borderRadius: 8,
-      padding: 12,
-      fontSize: 16,
-      marginBottom: 16,
-      backgroundColor: isDarkMode ? '#1A1A1A' : '#FAFAFA',
-      color: isDarkMode ? '#FFFFFF' : '#333333',
-    },
     button: {
       backgroundColor: '#4CAF50',
       padding: 12,
       borderRadius: 8,
       alignItems: 'center',
+      marginTop: 16,
     },
     buttonDisabled: {
-      backgroundColor: isDarkMode ? '#444444' : '#CCCCCC',
+      backgroundColor: '#444444',
     },
     buttonText: {
       color: '#FFFFFF',
@@ -273,19 +443,19 @@ const getStyles = (isDarkMode: boolean) =>
       padding: 8,
     },
     refreshButtonText: {
-      color: '#4CAF50',
+      color: '#6366F1',
       fontSize: 14,
     },
     emptyText: {
       textAlign: 'center',
-      color: isDarkMode ? '#666666' : '#999999',
+      color: '#666666',
       fontStyle: 'italic',
       padding: 20,
     },
     logItem: {
       borderBottomWidth: 1,
-      borderBottomColor: isDarkMode ? '#444444' : '#F0F0F0',
-      paddingVertical: 8,
+      borderBottomColor: '#444444',
+      paddingVertical: 12,
     },
     logHeader: {
       flexDirection: 'row',
@@ -296,7 +466,7 @@ const getStyles = (isDarkMode: boolean) =>
     logSender: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDarkMode ? '#FFFFFF' : '#333333',
+      color: '#FFFFFF',
     },
     logStatus: {
       paddingHorizontal: 8,
@@ -309,7 +479,7 @@ const getStyles = (isDarkMode: boolean) =>
     },
     logTimestamp: {
       fontSize: 12,
-      color: isDarkMode ? '#999999' : '#999999',
+      color: '#999999',
       marginBottom: 4,
     },
     logError: {

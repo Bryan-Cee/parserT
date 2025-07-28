@@ -86,7 +86,7 @@ export const useSMSPermissions = () => {
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener(
       'onPermissionResult',
-      (data) => {
+      data => {
         setPermissionStatus(data);
         setIsLoading(false);
       },
@@ -127,43 +127,15 @@ export const useSMSMessages = () => {
     }
   }, [smsService]);
 
-  const readRecentSMS = useCallback(async () => {
-    try {
-      if (Platform.OS !== 'android' || !SMSModule) {
-        return;
-      }
-
-      if (typeof SMSModule.readRecentSMS !== 'function') {
-        console.error('readRecentSMS method not available in SMSModule');
-        return;
-      }
-
-      const result = await SMSModule.readRecentSMS();
-
-      // Process each SMS and add to our storage if it's from a whitelisted sender
-      for (const sms of result.messages) {
-        const isWhitelisted = isWhitelistedSender(sms.sender);
-
-        if (isWhitelisted) {
-          await addMessage(sms.sender, sms.body, sms.timestamp);
-        }
-      }
-    } catch (error) {
-      console.error('Error reading recent SMS:', error);
-    }
-  }, []);
-
-  const isWhitelistedSender = (sender: string): boolean => {
-    if (!sender) return false;
-
-    const whitelistedSenders = [
-      'M-PESA', 'MPESA', 'Safaricom', 'IM-BANK', 'EQUITY', 'KCB', 'COOP BANK',
-      'STANCHART', 'ABSA', 'DTB', 'I&M BANK', 'FAMILY BANK', 'SID', 'TALA'
-    ];
+  const isAllowedSender = (
+    sender: string,
+    allowedSenders: string[],
+  ): boolean => {
+    if (!sender || !allowedSenders.length) return false;
 
     const normalizedSender = sender.toUpperCase().trim();
-    return whitelistedSenders.some(whitelisted =>
-      normalizedSender.includes(whitelisted.toUpperCase())
+    return allowedSenders.some(allowed =>
+      normalizedSender.includes(allowed.toUpperCase()),
     );
   };
 
@@ -213,6 +185,76 @@ export const useSMSMessages = () => {
     [smsService],
   );
 
+  const readRecentSMS = useCallback(
+    async (silent = false) => {
+      try {
+        if (Platform.OS !== 'android' || !SMSModule) {
+          if (!silent)
+            console.log(
+              'SMS reading not available: not Android or SMSModule not available',
+            );
+          return;
+        }
+
+        if (typeof SMSModule.readRecentSMS !== 'function') {
+          console.error('readRecentSMS method not available in SMSModule');
+          return;
+        }
+
+        if (!silent) console.log('Reading recent SMS messages from phone...');
+        const result = await SMSModule.readRecentSMS();
+        const allowedSenders = await smsService.getAllowedSenders();
+
+        let processedCount = 0;
+        let allowedCount = 0;
+
+        if (!silent)
+          console.log(
+            `Found ${result.messages?.length || 0} recent SMS messages`,
+          );
+
+        // Process each SMS and add to our storage if it's from an allowed sender
+        for (const sms of result.messages || []) {
+          const isAllowed = isAllowedSender(sms.sender, allowedSenders);
+
+          if (isAllowed) {
+            allowedCount++;
+            // Check if message already exists to avoid duplicates
+            const existingMessages = await smsService.getMessages();
+            const isDuplicate = existingMessages.some(
+              existing =>
+                existing.sender === sms.sender &&
+                existing.body === sms.body &&
+                Math.abs(existing.timestamp - sms.timestamp) < 1000, // Within 1 second
+            );
+
+            if (!isDuplicate) {
+              await addMessage(sms.sender, sms.body, sms.timestamp);
+              processedCount++;
+            }
+          }
+        }
+
+        if (!silent) {
+          console.log(
+            `Processed ${processedCount} new messages from ${allowedCount} allowed senders`,
+          );
+
+          if (processedCount > 0) {
+            showToast(`Found ${processedCount} new SMS messages`);
+          }
+        }
+
+        return processedCount; // Return count for sync function
+      } catch (error) {
+        console.error('Error reading recent SMS:', error);
+        if (!silent) showToast('Error reading SMS messages from phone');
+        return 0;
+      }
+    },
+    [smsService, addMessage],
+  );
+
   const retryFailedUploads = useCallback(async () => {
     try {
       const successCount = await smsService.retryFailedUploads();
@@ -224,33 +266,83 @@ export const useSMSMessages = () => {
     }
   }, [smsService, loadMessages]);
 
+  const syncMessages = useCallback(async () => {
+    try {
+      // First, read recent SMS from phone to get any new messages
+      console.log('Sync: Reading recent SMS from phone first...');
+      const newMessagesFound = (await readRecentSMS(true)) || 0; // Silent mode, default to 0
+
+      // Now sync the messages (including any newly found ones)
+      const result = await smsService.syncMessages();
+      const total = result.uploaded + result.failed;
+
+      if (newMessagesFound > 0) {
+        showToast(
+          `Found ${newMessagesFound} new messages, ${result.uploaded} uploaded, ${result.failed} failed`,
+        );
+      } else if (total > 0) {
+        showToast(`${result.uploaded} uploaded, ${result.failed} failed`);
+      } else {
+        showToast('No new messages to sync');
+      }
+
+      // Always reload messages after sync to show current state
+      await loadMessages();
+    } catch (error) {
+      console.error('Error syncing messages:', error);
+      showToast('Error syncing messages');
+    }
+  }, [smsService, loadMessages, readRecentSMS]);
+
   const showToast = (message: string) => {
     ToastAndroid.show(message, ToastAndroid.SHORT);
   };
 
   useEffect(() => {
     loadMessages();
-  }, [loadMessages]);
+    // Also read recent SMS from phone when app starts
+    readRecentSMS();
+  }, [loadMessages, readRecentSMS]);
 
-  // Listen for incoming SMS events
+  // Periodic SMS reading (every 5 minutes when app is active)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Periodic SMS check...');
+      readRecentSMS(true); // Silent mode for periodic checks
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [readRecentSMS]);
+
+  // Listen for incoming SMS events - only process if sender is allowed
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener(
       'onSMSReceived',
-      data => {
-        addMessage(data.sender, data.body, data.timestamp);
+      async data => {
+        try {
+          const allowedSenders = await smsService.getAllowedSenders();
+          const isAllowed = isAllowedSender(data.sender, allowedSenders);
+
+          if (isAllowed) {
+            await addMessage(data.sender, data.body, data.timestamp);
+          }
+        } catch (error) {
+          console.error('Error processing incoming SMS:', error);
+        }
       },
     );
 
     return () => {
       subscription.remove();
     };
-  }, [addMessage]);
+  }, [addMessage, smsService]);
 
   return {
     messages,
     isLoading,
     loadMessages,
     retryFailedUploads,
+    syncMessages,
     readRecentSMS,
   };
 };

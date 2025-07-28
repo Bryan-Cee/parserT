@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { FC } from 'react';
 import {
   View,
@@ -22,6 +22,7 @@ const App: FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
 
   const {
     permissionStatus,
@@ -33,10 +34,26 @@ const App: FC = () => {
     isLoading: messagesLoading,
     loadMessages,
     retryFailedUploads,
+    syncMessages,
     readRecentSMS,
   } = useSMSMessages();
 
   const smsService = SMSService.getInstance();
+
+  const loadLastSyncTime = useCallback(async () => {
+    try {
+      const time = await smsService.getLastSyncTime();
+      setLastSyncTime(time);
+    } catch (error) {
+      console.error('Error loading last sync time:', error);
+    }
+  }, [smsService]);
+
+  const formatLastSyncTime = (timestamp: number) => {
+    if (timestamp === 0) return 'Never';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -76,6 +93,15 @@ const App: FC = () => {
     }
   }, [readRecentSMS]);
 
+  const handleSync = useCallback(async () => {
+    try {
+      await syncMessages();
+      await loadLastSyncTime(); // Refresh the last sync time display
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sync messages');
+    }
+  }, [syncMessages, loadLastSyncTime]);
+
   const handleRetryAll = useCallback(async () => {
     try {
       const successCount = await retryFailedUploads();
@@ -87,6 +113,11 @@ const App: FC = () => {
       Alert.alert('Error', 'Failed to retry uploads');
     }
   }, [retryFailedUploads]);
+
+  // Load last sync time on component mount
+  useEffect(() => {
+    loadLastSyncTime();
+  }, [loadLastSyncTime]);
 
   const renderPermissionRequest = () => (
     <View style={styles.permissionContainer}>
@@ -138,10 +169,7 @@ const App: FC = () => {
         <Text style={styles.logo}>P T</Text>
         <View style={styles.headerIcons}>
           <View style={styles.statusIndicator} />
-          <TouchableOpacity
-            onPress={handleReadRecentSMS}
-            style={styles.iconButton}
-          >
+          <TouchableOpacity onPress={handleSync} style={styles.iconButton}>
             <Text style={styles.syncIcon}>↻</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -166,7 +194,9 @@ const App: FC = () => {
           thumbColor={autoSyncEnabled ? '#FFFFFF' : '#CCCCCC'}
         />
       </View>
-      <Text style={styles.lastSyncText}>Last sync: 20:20</Text>
+      <Text style={styles.lastSyncText}>
+        Last sync: {formatLastSyncTime(lastSyncTime)}
+      </Text>
       <Text style={styles.homeServerDescription}>
         Automatically upload new messages to your private server and mark them
         when parsed.
