@@ -1,6 +1,22 @@
 package com.parsert;
 
-import android.content.BroadcastReceiver;
+imp    @Override
+    pu                if (pdus != null) {
+                    for (int i = 0; i < pdus.length; i++) {
+                        try {
+                            SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
+                            String sender = smsMessage.getDisplayOriginatingAddress();
+                            String messageBody = smsMessage.getDisplayMessageBody();
+                            long timestamp = smsMessage.getTimestampMillis();
+
+                            // Only process whitelisted sendersReceive(Context context, Intent intent) {
+        if ("android.provider.Telephony.SMS_RECEIVED".equals(intent.getAction())) {
+            Bundle bundle = intent.getExtras();
+            if (bundle != null) {
+                Object[] pdus = (Object[]) bundle.get("pdus");
+                String format = bundle.getString("format");
+
+                if (pdus != null && pdus.length > 0) {ontent.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -25,25 +41,33 @@ public class SMSReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d(TAG, "SMS Broadcast received with action: " + intent.getAction());
+        
         if ("android.provider.Telephony.SMS_RECEIVED".equals(intent.getAction())) {
             Bundle bundle = intent.getExtras();
             if (bundle != null) {
                 Object[] pdus = (Object[]) bundle.get("pdus");
                 String format = bundle.getString("format");
 
+                Log.d(TAG, "Processing SMS bundle with " + (pdus != null ? pdus.length : 0) + " PDUs");
+
                 if (pdus != null) {
-                    for (Object pdu : pdus) {
-                        SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdu, format);
-                        String sender = smsMessage.getDisplayOriginatingAddress();
-                        String messageBody = smsMessage.getDisplayMessageBody();
-                        long timestamp = smsMessage.getTimestampMillis();
+                    for (int i = 0; i < pdus.length; i++) {
+                        try {
+                            SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
+                            String sender = smsMessage.getDisplayOriginatingAddress();
+                            String messageBody = smsMessage.getDisplayMessageBody();
+                            long timestamp = smsMessage.getTimestampMillis();
 
-                        Log.d(TAG, "Received SMS from: " + sender + ", Body: " + messageBody);
+                            Log.d(TAG, "SMS #" + (i+1) + " - From: " + sender + ", Body length: " + 
+                                  (messageBody != null ? messageBody.length() : 0) + ", Timestamp: " + timestamp);
 
-                        // Check if sender is in whitelist
-                        if (isWhitelistedSender(sender)) {
-                            Log.d(TAG, "SMS from whitelisted sender: " + sender);
-                            sendEventToReactNative(context, sender, messageBody, timestamp);
+                            // Check if sender is in whitelist
+                            if (isWhitelistedSender(sender)) {
+                                sendEventToReactNative(context, sender, messageBody, timestamp);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -52,9 +76,12 @@ public class SMSReceiver extends BroadcastReceiver {
     }
 
     private boolean isWhitelistedSender(String sender) {
-        if (sender == null) return false;
+        if (sender == null) {
+            return false;
+        }
 
         String normalizedSender = sender.toUpperCase().trim();
+        
         for (String whitelistedSender : WHITELISTED_SENDERS) {
             if (normalizedSender.contains(whitelistedSender.toUpperCase())) {
                 return true;
@@ -78,13 +105,9 @@ public class SMSReceiver extends BroadcastReceiver {
                 reactContext
                     .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                     .emit("onSMSReceived", params);
-
-                Log.d(TAG, "Event sent to React Native");
-            } else {
-                Log.w(TAG, "React context is null, cannot send event");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error sending event to React Native: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

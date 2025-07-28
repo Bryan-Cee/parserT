@@ -58,7 +58,13 @@ export const useSMSPermissions = () => {
 
       if (SMSModule) {
         const result = await SMSModule.requestPermissions();
-        console.log('Permission request result:', result);
+
+        // Test if SMS module is working
+        try {
+          await SMSModule.testSMSReceiver();
+        } catch (testError) {
+          console.error('SMS module test failed:', testError);
+        }
       } else {
         // Fallback to react-native-permissions
         await request(PERMISSIONS.ANDROID.RECEIVE_SMS);
@@ -75,6 +81,21 @@ export const useSMSPermissions = () => {
       setIsLoading(false);
     }
   }, [checkPermissions, permissionStatus.hasAllPermissions]);
+
+  // Listen for permission results from native
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      'onPermissionResult',
+      (data) => {
+        setPermissionStatus(data);
+        setIsLoading(false);
+      },
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     checkPermissions();
@@ -106,6 +127,46 @@ export const useSMSMessages = () => {
     }
   }, [smsService]);
 
+  const readRecentSMS = useCallback(async () => {
+    try {
+      if (Platform.OS !== 'android' || !SMSModule) {
+        return;
+      }
+
+      if (typeof SMSModule.readRecentSMS !== 'function') {
+        console.error('readRecentSMS method not available in SMSModule');
+        return;
+      }
+
+      const result = await SMSModule.readRecentSMS();
+
+      // Process each SMS and add to our storage if it's from a whitelisted sender
+      for (const sms of result.messages) {
+        const isWhitelisted = isWhitelistedSender(sms.sender);
+
+        if (isWhitelisted) {
+          await addMessage(sms.sender, sms.body, sms.timestamp);
+        }
+      }
+    } catch (error) {
+      console.error('Error reading recent SMS:', error);
+    }
+  }, []);
+
+  const isWhitelistedSender = (sender: string): boolean => {
+    if (!sender) return false;
+
+    const whitelistedSenders = [
+      'M-PESA', 'MPESA', 'Safaricom', 'IM-BANK', 'EQUITY', 'KCB', 'COOP BANK',
+      'STANCHART', 'ABSA', 'DTB', 'I&M BANK', 'FAMILY BANK', 'SID', 'TALA'
+    ];
+
+    const normalizedSender = sender.toUpperCase().trim();
+    return whitelistedSenders.some(whitelisted =>
+      normalizedSender.includes(whitelisted.toUpperCase())
+    );
+  };
+
   const addMessage = useCallback(
     async (sender: string, body: string, timestamp: number) => {
       const newMessage: SMSMessage = {
@@ -134,6 +195,7 @@ export const useSMSMessages = () => {
           );
         } else {
           showToast(`Upload failed: ${uploadResult.error}`);
+          console.error('Upload failed:', uploadResult.error);
           // Update upload attempts
           newMessage.uploadAttempts = 1;
           await smsService.updateMessage(newMessage);
@@ -163,11 +225,7 @@ export const useSMSMessages = () => {
   }, [smsService, loadMessages]);
 
   const showToast = (message: string) => {
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(message, ToastAndroid.SHORT);
-    } else {
-      Alert.alert('SMS Parser', message);
-    }
+    ToastAndroid.show(message, ToastAndroid.SHORT);
   };
 
   useEffect(() => {
@@ -179,7 +237,6 @@ export const useSMSMessages = () => {
     const subscription = DeviceEventEmitter.addListener(
       'onSMSReceived',
       data => {
-        console.log('SMS received:', data);
         addMessage(data.sender, data.body, data.timestamp);
       },
     );
@@ -194,5 +251,6 @@ export const useSMSMessages = () => {
     isLoading,
     loadMessages,
     retryFailedUploads,
+    readRecentSMS,
   };
 };

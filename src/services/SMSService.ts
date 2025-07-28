@@ -7,7 +7,7 @@ const SERVER_URL_KEY = 'server_url';
 
 export class SMSService {
   private static instance: SMSService;
-  private serverUrl: string = 'http://192.168.1.100:8000'; // Default server URL
+  private serverUrl: string = 'http://10.0.2.2:8000'; // Default server URL for Android emulator
 
   static getInstance(): SMSService {
     if (!SMSService.instance) {

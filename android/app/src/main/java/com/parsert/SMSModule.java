@@ -3,6 +3,7 @@ package com.parsert;
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
+import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -14,6 +15,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
 
 public class SMSModule extends ReactContextBaseJavaModule {
+    private static final String TAG = "SMSModule";
     private static final int SMS_PERMISSION_REQUEST_CODE = 1001;
     private static final String[] SMS_PERMISSIONS = {
         Manifest.permission.RECEIVE_SMS,
@@ -69,6 +71,64 @@ public class SMSModule extends ReactContextBaseJavaModule {
             promise.resolve("REQUESTED");
         } catch (Exception e) {
             promise.reject("PERMISSION_REQUEST_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void testSMSReceiver(Promise promise) {
+        try {
+            // This is a test method to verify the module is working
+            promise.resolve("SMS_MODULE_ACTIVE");
+        } catch (Exception e) {
+            promise.reject("TEST_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void readRecentSMS(Promise promise) {
+        try {
+            ReactApplicationContext context = getReactApplicationContext();
+            
+            // Check if we have READ_SMS permission
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+                promise.reject("NO_PERMISSION", "READ_SMS permission not granted");
+                return;
+            }
+
+            android.database.Cursor cursor = context.getContentResolver().query(
+                android.net.Uri.parse("content://sms/inbox"),
+                new String[]{"address", "body", "date"},
+                null,
+                null,
+                "date DESC LIMIT 10"
+            );
+
+            WritableMap result = Arguments.createMap();
+            com.facebook.react.bridge.WritableArray messages = Arguments.createArray();
+
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String sender = cursor.getString(cursor.getColumnIndexOrThrow("address"));
+                    String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+                    long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow("date"));
+
+                    WritableMap message = Arguments.createMap();
+                    message.putString("sender", sender);
+                    message.putString("body", body);
+                    message.putDouble("timestamp", timestamp);
+                    messages.pushMap(message);
+                }
+                cursor.close();
+                
+                result.putArray("messages", messages);
+                result.putInt("count", messages.size());
+                promise.resolve(result);
+            } else {
+                promise.reject("CURSOR_NULL", "Unable to access SMS database");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject("READ_SMS_ERROR", e.getMessage());
         }
     }
 }

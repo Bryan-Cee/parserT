@@ -105,7 +105,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
             style={styles.input}
             value={serverUrl}
             onChangeText={setServerUrl}
-            placeholder="http://192.168.1.100:8000"
+            placeholder="http://10.0.2.2:8000"
             autoCapitalize="none"
             autoCorrect={false}
           />

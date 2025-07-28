@@ -31,6 +31,7 @@ const App: FC = () => {
     isLoading: messagesLoading,
     loadMessages,
     retryFailedUploads,
+    readRecentSMS,
   } = useSMSMessages();
 
   const smsService = SMSService.getInstance();
@@ -60,6 +61,15 @@ const App: FC = () => {
     },
     [smsService, loadMessages],
   );
+
+  const handleReadRecentSMS = useCallback(async () => {
+    try {
+      await readRecentSMS();
+      Alert.alert('Success', 'Recent SMS messages have been read and processed');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to read recent SMS messages');
+    }
+  }, [readRecentSMS]);
 
   const handleRetryAll = useCallback(async () => {
     try {
@@ -135,6 +145,12 @@ const App: FC = () => {
             <Text style={styles.headerButtonText}>Retry All</Text>
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          onPress={handleReadRecentSMS}
+          style={styles.headerButton}
+        >
+          <Text style={styles.headerButtonText}>Read SMS</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setShowSettings(true)}
           style={styles.headerButton}
