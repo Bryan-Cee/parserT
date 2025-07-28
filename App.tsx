@@ -10,6 +10,7 @@ import {
   StatusBar,
   RefreshControl,
   Platform,
+  Switch,
 } from 'react-native';
 import { useSMSPermissions, useSMSMessages } from './src/hooks/useSMS';
 import { MessageItem } from './src/components/MessageItem';
@@ -20,6 +21,7 @@ import { SMSService } from './src/services/SMSService';
 const App: FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
 
   const {
     permissionStatus,
@@ -65,7 +67,10 @@ const App: FC = () => {
   const handleReadRecentSMS = useCallback(async () => {
     try {
       await readRecentSMS();
-      Alert.alert('Success', 'Recent SMS messages have been read and processed');
+      Alert.alert(
+        'Success',
+        'Recent SMS messages have been read and processed',
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to read recent SMS messages');
     }
@@ -129,48 +134,49 @@ const App: FC = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <View style={styles.headerLeft}>
-        <Text style={styles.headerTitle}>parserT</Text>
-        <Text style={styles.headerSubtitle}>
-          {messages.length} messages • {messages.filter(m => m.uploaded).length}{' '}
-          uploaded
-        </Text>
-      </View>
-      <View style={styles.headerRight}>
-        {messages.some(m => !m.uploaded) && (
+      <View style={styles.headerTop}>
+        <Text style={styles.logo}>P T</Text>
+        <View style={styles.headerIcons}>
+          <View style={styles.statusIndicator} />
           <TouchableOpacity
-            onPress={handleRetryAll}
-            style={styles.headerButton}
+            onPress={handleReadRecentSMS}
+            style={styles.iconButton}
           >
-            <Text style={styles.headerButtonText}>Retry All</Text>
+            <Text style={styles.syncIcon}>↻</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={handleReadRecentSMS}
-          style={styles.headerButton}
-        >
-          <Text style={styles.headerButtonText}>Read SMS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setShowSettings(true)}
-          style={styles.headerButton}
-        >
-          <Text style={styles.headerButtonText}>⚙️</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowSettings(true)}
+            style={styles.iconButton}
+          >
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+    </View>
+  );
+
+  const renderHomeServer = () => (
+    <View style={styles.homeServerSection}>
+      <View style={styles.homeServerHeader}>
+        <Text style={styles.homeServerTitle}>Home Server</Text>
+        <Switch
+          value={autoSyncEnabled}
+          onValueChange={setAutoSyncEnabled}
+          trackColor={{ false: '#3E3E3E', true: '#4CAF50' }}
+          thumbColor={autoSyncEnabled ? '#FFFFFF' : '#CCCCCC'}
+        />
+      </View>
+      <Text style={styles.lastSyncText}>Last sync: 20:20</Text>
+      <Text style={styles.homeServerDescription}>
+        Automatically upload new messages to your private server and mark them
+        when parsed.
+      </Text>
     </View>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>No Messages Yet</Text>
-      <Text style={styles.emptyText}>
-        SMS messages from banks and mobile money services will appear here
-        automatically.
-      </Text>
-      <Text style={styles.emptyHint}>
-        Whitelisted senders: M-PESA, Safaricom, Banks, etc.
-      </Text>
+      <Text style={styles.emptyText}>No messages yet</Text>
     </View>
   );
 
@@ -184,28 +190,46 @@ const App: FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar backgroundColor="#1A1A1A" barStyle="light-content" />
 
       {!permissionStatus.hasAllPermissions ? (
         renderPermissionRequest()
       ) : (
         <>
           {renderHeader()}
+          {renderHomeServer()}
 
-          <FlatList
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={item => item.id}
-            style={styles.messagesList}
-            contentContainerStyle={
-              messages.length === 0 ? styles.emptyListContainer : undefined
-            }
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            ListEmptyComponent={renderEmptyState}
-            showsVerticalScrollIndicator={false}
-          />
+          <View style={styles.messagesSection}>
+            <Text style={styles.sectionTitle}>Recent Messages</Text>
+
+            <FlatList
+              data={messages}
+              renderItem={({ item }) => (
+                <MessageItem
+                  message={item}
+                  onRetry={handleRetryMessage}
+                  isDarkMode={true}
+                />
+              )}
+              keyExtractor={item => item.id}
+              style={styles.messagesList}
+              contentContainerStyle={
+                messages.length === 0
+                  ? styles.emptyListContainer
+                  : styles.messagesListContent
+              }
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#FFFFFF"
+                  colors={['#4CAF50']}
+                />
+              }
+              ListEmptyComponent={renderEmptyState}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
         </>
       )}
     </View>
@@ -215,43 +239,43 @@ const App: FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#1A1A1A',
   },
   permissionContainer: {
     flex: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
   },
   permissionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 16,
-    color: '#333333',
+    color: '#FFFFFF',
   },
   permissionText: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
-    color: '#666666',
+    color: '#CCCCCC',
   },
   permissionsList: {
     marginBottom: 32,
   },
   permissionItem: {
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2A2A2A',
     borderRadius: 8,
     marginBottom: 8,
   },
   permissionItemText: {
     fontSize: 16,
-    color: '#333333',
+    color: '#FFFFFF',
   },
   permissionButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#4CAF50',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -272,57 +296,102 @@ const styles = StyleSheet.create({
   },
   successSubtext: {
     fontSize: 14,
-    color: '#666666',
+    color: '#CCCCCC',
     textAlign: 'center',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingHorizontal: 16,
     paddingTop:
       Platform.OS === 'android'
         ? StatusBar.currentHeight
           ? StatusBar.currentHeight + 16
           : 40
-        : 16,
+        : 50,
+    paddingBottom: 16,
+    backgroundColor: '#1A1A1A',
   },
-  headerLeft: {
-    flex: 1,
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
+  logo: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#FFFFFF',
+    letterSpacing: 2,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#666666',
-    marginTop: 2,
-  },
-  headerRight: {
+  headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerButton: {
-    marginLeft: 12,
-    padding: 8,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+    marginRight: 12,
   },
-  headerButtonText: {
-    fontSize: 14,
-    color: '#2196F3',
+  syncIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  iconButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  settingsIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  homeServerSection: {
+    backgroundColor: '#2A2A2A',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  homeServerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  homeServerTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  lastSyncText: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    marginBottom: 8,
+  },
+  homeServerDescription: {
+    fontSize: 14,
+    color: '#999999',
+    lineHeight: 20,
+  },
+  messagesSection: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
   },
   messagesList: {
     flex: 1,
   },
+  messagesListContent: {
+    paddingBottom: 20,
+  },
   emptyListContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,
@@ -330,24 +399,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 12,
-  },
   emptyText: {
     fontSize: 16,
     color: '#666666',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 8,
-  },
-  emptyHint: {
-    fontSize: 14,
-    color: '#999999',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
 });
 

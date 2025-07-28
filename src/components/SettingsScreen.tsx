@@ -12,9 +12,13 @@ import { SMSService } from '../services/SMSService';
 
 interface SettingsScreenProps {
   onClose: () => void;
+  isDarkMode?: boolean;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  onClose,
+  isDarkMode = true,
+}) => {
   const [serverUrl, setServerUrl] = useState('');
   const [uploadLogs, setUploadLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,6 +92,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
     return new Date(timestamp).toLocaleString();
   };
 
+  const styles = getStyles(isDarkMode);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -106,6 +112,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
             value={serverUrl}
             onChangeText={setServerUrl}
             placeholder="http://10.0.2.2:8000"
+            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -174,138 +181,140 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#666666',
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#FAFAFA',
-  },
-  button: {
-    backgroundColor: '#2196F3',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dangerButton: {
-    backgroundColor: '#FF5722',
-  },
-  dangerButtonText: {
-    color: '#FFFFFF',
-  },
-  refreshButton: {
-    padding: 8,
-  },
-  refreshButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#999999',
-    fontStyle: 'italic',
-    padding: 20,
-  },
-  logItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    paddingVertical: 8,
-  },
-  logHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  logSender: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-  },
-  logStatus: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  logStatusText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-  },
-  logTimestamp: {
-    fontSize: 12,
-    color: '#999999',
-    marginBottom: 4,
-  },
-  logError: {
-    fontSize: 12,
-    color: '#FF5722',
-    fontStyle: 'italic',
-  },
-});
+const getStyles = (isDarkMode: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDarkMode ? '#1A1A1A' : '#F5F5F5',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: isDarkMode ? '#1A1A1A' : '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: isDarkMode ? '#3A3A3A' : '#E0E0E0',
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: isDarkMode ? '#FFFFFF' : '#333333',
+    },
+    closeButton: {
+      padding: 8,
+    },
+    closeButtonText: {
+      fontSize: 18,
+      color: isDarkMode ? '#FFFFFF' : '#666666',
+    },
+    content: {
+      flex: 1,
+    },
+    section: {
+      backgroundColor: isDarkMode ? '#2A2A2A' : '#FFFFFF',
+      margin: 16,
+      padding: 16,
+      borderRadius: 12,
+      elevation: isDarkMode ? 0 : 2,
+      shadowColor: isDarkMode ? 'transparent' : '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDarkMode ? 0 : 0.22,
+      shadowRadius: isDarkMode ? 0 : 2.22,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: isDarkMode ? '#FFFFFF' : '#333333',
+      marginBottom: 12,
+    },
+    label: {
+      fontSize: 14,
+      color: isDarkMode ? '#CCCCCC' : '#666666',
+      marginBottom: 8,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#444444' : '#E0E0E0',
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      marginBottom: 16,
+      backgroundColor: isDarkMode ? '#1A1A1A' : '#FAFAFA',
+      color: isDarkMode ? '#FFFFFF' : '#333333',
+    },
+    button: {
+      backgroundColor: '#4CAF50',
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    buttonDisabled: {
+      backgroundColor: isDarkMode ? '#444444' : '#CCCCCC',
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    dangerButton: {
+      backgroundColor: '#FF5722',
+    },
+    dangerButtonText: {
+      color: '#FFFFFF',
+    },
+    refreshButton: {
+      padding: 8,
+    },
+    refreshButtonText: {
+      color: '#4CAF50',
+      fontSize: 14,
+    },
+    emptyText: {
+      textAlign: 'center',
+      color: isDarkMode ? '#666666' : '#999999',
+      fontStyle: 'italic',
+      padding: 20,
+    },
+    logItem: {
+      borderBottomWidth: 1,
+      borderBottomColor: isDarkMode ? '#444444' : '#F0F0F0',
+      paddingVertical: 8,
+    },
+    logHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    logSender: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDarkMode ? '#FFFFFF' : '#333333',
+    },
+    logStatus: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 8,
+    },
+    logStatusText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+    },
+    logTimestamp: {
+      fontSize: 12,
+      color: isDarkMode ? '#999999' : '#999999',
+      marginBottom: 4,
+    },
+    logError: {
+      fontSize: 12,
+      color: '#FF5722',
+      fontStyle: 'italic',
+    },
+  });
