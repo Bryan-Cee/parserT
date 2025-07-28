@@ -1,4 +1,4 @@
-package com.smsparserapp;
+package com.parsert;
 
 import android.Manifest;
 import android.app.Activity;

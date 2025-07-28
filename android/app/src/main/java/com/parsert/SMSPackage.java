@@ -1,4 +1,4 @@
-package com.smsparserapp;
+package com.parsert;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

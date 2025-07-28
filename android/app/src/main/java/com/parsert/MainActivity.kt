@@ -1,4 +1,4 @@
-package com.smsparserapp
+package com.parsert
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
