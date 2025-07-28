@@ -34,11 +34,7 @@ const App: FC = () => {
     isLoading: permissionsLoading,
     requestPermissions,
   } = useSMSPermissions();
-  const {
-    messages,
-    loadMessages,
-    syncMessages,
-  } = useSMSMessages();
+  const { messages, loadMessages, syncMessages } = useSMSMessages();
 
   const smsService = SMSService.getInstance();
 

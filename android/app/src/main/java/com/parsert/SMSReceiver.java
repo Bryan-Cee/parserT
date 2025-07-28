@@ -1,22 +1,6 @@
 package com.parsert;
 
-imp    @Override
-    pu                if (pdus != null) {
-                    for (int i = 0; i < pdus.length; i++) {
-                        try {
-                            SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdus[i], format);
-                            String sender = smsMessage.getDisplayOriginatingAddress();
-                            String messageBody = smsMessage.getDisplayMessageBody();
-                            long timestamp = smsMessage.getTimestampMillis();
-
-                            // Only process whitelisted sendersReceive(Context context, Intent intent) {
-        if ("android.provider.Telephony.SMS_RECEIVED".equals(intent.getAction())) {
-            Bundle bundle = intent.getExtras();
-            if (bundle != null) {
-                Object[] pdus = (Object[]) bundle.get("pdus");
-                String format = bundle.getString("format");
-
-                if (pdus != null && pdus.length > 0) {ontent.BroadcastReceiver;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -67,7 +51,7 @@ public class SMSReceiver extends BroadcastReceiver {
                                 sendEventToReactNative(context, sender, messageBody, timestamp);
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Log.e(TAG, "Error processing SMS: " + e.getMessage(), e);
                         }
                     }
                 }
@@ -105,9 +89,13 @@ public class SMSReceiver extends BroadcastReceiver {
                 reactContext
                     .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                     .emit("onSMSReceived", params);
+                
+                Log.d(TAG, "SMS event sent to React Native");
+            } else {
+                Log.w(TAG, "React context is null, cannot send SMS event");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error sending SMS event to React Native: " + e.getMessage(), e);
         }
     }
 }
