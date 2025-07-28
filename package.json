@@ -1,5 +1,5 @@
 {
-  "name": "SMSParserApp",
+  "name": "parsert",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -7,12 +7,17 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "build:android": "cd android && ./gradlew assembleRelease",
+    "clean": "cd android && ./gradlew clean",
+    "test-server": "python3 test_server.py"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native/new-app-screen": "0.80.2",
     "react": "19.1.0",
     "react-native": "0.80.2",
-    "@react-native/new-app-screen": "0.80.2"
+    "react-native-permissions": "^5.4.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -26,7 +31,8 @@
     "@react-native/metro-config": "0.80.2",
     "@react-native/typescript-config": "0.80.2",
     "@types/jest": "^29.5.13",
-    "@types/react": "^19.1.0",
+    "@types/react": "^19.1.8",
+    "@types/react-native": "^0.72.8",
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",

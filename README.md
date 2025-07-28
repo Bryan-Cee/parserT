@@ -1,4 +1,155 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# parserT - SMS Parser App
+
+A React Native Android application that automatically listens to incoming SMS messages from specific senders (like M-PESA, banks, etc.), displays them in a clean UI, and uploads them to a remote server.
+
+## Features
+
+- **Automatic SMS Detection**: Listens to incoming SMS messages using Android BroadcastReceiver
+- **Smart Filtering**: Only processes messages from whitelisted senders (M-PESA, Safaricom, Banks, etc.)
+- **Automatic Upload**: Uploads SMS messages to a configurable remote server endpoint
+- **Clean UI**: Displays messages in a user-friendly list with upload status indicators
+- **Retry Mechanism**: Manual retry for failed uploads with detailed error logging
+- **Permission Management**: Handles SMS permissions with clear user prompts
+- **Settings Panel**: Configure server URL and view upload logs
+
+## Requirements
+
+- React Native 0.80.2+
+- Android API Level 23+ (Android 6.0+)
+- Node.js 16+
+- Android SDK and development environment
+
+## Permissions
+
+The app requires the following Android permissions:
+
+- `RECEIVE_SMS`: To listen for incoming SMS messages
+- `READ_SMS`: To read SMS message content
+- `INTERNET`: To upload messages to the remote server
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Ensure Android development environment is set up
+4. Run the app:
+   ```bash
+   npx react-native run-android
+   ```
+
+## Configuration
+
+### Server Setup
+
+1. Open the app and tap the settings icon (⚙️)
+2. Configure your server URL (default: http://192.168.1.100:8000)
+3. Save the configuration
+
+### Server Endpoint
+
+The app sends POST requests to `{server_url}/upload-sms` with the following JSON payload:
+
+```json
+{
+  "sender": "M-PESA",
+  "body": "TGQ4MG8ZOE Confirmed...",
+  "timestamp": 1722002760000
+}
+```
+
+## Whitelisted Senders
+
+The app automatically filters messages from these senders:
+
+- M-PESA, MPESA
+- Safaricom
+- IM-BANK, I&M BANK
+- EQUITY
+- KCB
+- COOP BANK
+- STANCHART
+- ABSA
+- DTB
+- FAMILY BANK
+- SID
+- TALA
+
+## Architecture
+
+### Native Android Components
+
+- **SMSReceiver.java**: BroadcastReceiver for intercepting SMS messages
+- **SMSModule.java**: Native module for permission handling
+- **SMSPackage.java**: React Native package registration
+
+### React Native Components
+
+- **App.tsx**: Main application component
+- **MessageItem.tsx**: Individual message display component
+- **SettingsScreen.tsx**: Configuration and logs interface
+- **useSMS.ts**: Custom hooks for SMS functionality
+- **SMSService.ts**: Service layer for API calls and data persistence
+
+## Development
+
+### File Structure
+
+```
+src/
+├── components/
+│   ├── MessageItem.tsx
+│   └── SettingsScreen.tsx
+├── hooks/
+│   └── useSMS.ts
+├── services/
+│   └── SMSService.ts
+└── types/
+    └── index.ts
+```
+
+### Build Commands
+
+```bash
+# Android development build
+npx react-native run-android
+
+# Release build
+cd android && ./gradlew assembleRelease
+```
+
+## Troubleshooting
+
+### Permissions Issues
+
+- Ensure the app has been granted SMS permissions in Android settings
+- Check that the device is running Android 6.0+ for runtime permissions
+
+### Network Issues
+
+- Verify the server URL is correct and accessible
+- Check that the server endpoint accepts POST requests
+- Ensure the device and server are on the same network
+
+### SMS Not Detected
+
+- Verify the sender name matches the whitelist patterns
+- Check Android logs for BroadcastReceiver activity
+- Ensure the app is not being killed by battery optimization
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly on Android devices
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
 
 # Getting Started
 
