@@ -82,6 +82,13 @@ The `build-android.yml` workflow will automatically use these secrets to sign yo
 - Ensure all dependencies are properly listed in `package.json`
 - Verify Android configuration in `android/app/build.gradle`
 
+### Java Compilation Errors
+
+If you see errors like "class, interface, enum, or record expected":
+- Check that all `.java` files in `android/app/src/main/java/com/parsert/` have proper syntax
+- Ensure imports are at the top of the file and class declarations are properly formed
+- Look for corrupted files that may have mixed or malformed code fragments
+
 ### Installation Issues
 
 - Enable "Install unknown apps" in Android settings
